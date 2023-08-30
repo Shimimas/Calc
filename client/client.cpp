@@ -16,6 +16,7 @@ int Client::init_socket() {
 
     if (connect(socket_fd, reinterpret_cast<const struct sockaddr *>(&server_address), sizeof(server_address)) < 0) {
         std::cout << "CLIENT ERROR: bad connect." << std::endl;
+        socket_close();
         return ERROR;
     }
     

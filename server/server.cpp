@@ -20,6 +20,7 @@ int Server::init_socket() {
 
     if (bind_res < 0) {
         std::cout << "SERVER ERROR: binding connection. Socket has already been establishing." << std::endl;
+        socket_close();
         return ERROR;
     }
 
