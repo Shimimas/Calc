@@ -10,6 +10,10 @@
 #include <vector>
 #include <csignal>
 #include <thread>
+#include <set>
+#include <fcntl.h>
+#include <algorithm>
+#include <queue>
 
 #define ERROR -1
 #define SUCCES 1
@@ -19,14 +23,22 @@
 
 class Server {
     private:
+        int __delete_client = -1;
         int __socket_fd;
         int __client_fd;
         struct sockaddr_in __server_address;
         char __buffer[BUFFER_SIZE];
-        bool __exit = true;
+        std::set<int> __clients;
+        std::queue<std::set<int>::iterator> __delayed_deletion;
+        timeval __timeout;
+        fd_set __readset;
 
         void __calculation();
         bool __isNumeric(std::string const &str);
+        void __select_inizialize();
+        void __accept_check();
+        void __data_working();
+        void __clear_delete_clients();
 
     public:
         Server();
