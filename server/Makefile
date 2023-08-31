@@ -8,10 +8,10 @@ CC = g++
 .PHONY: clean
 
 $(bin): $(obj)
-	$(CC) $(obj) -o $(bin) $(CFLAGS)
+	$(CC) $(obj) -o $(bin) -pthread
 
 $(obj): $(src)
-	$(CC) $(src) -c
+	$(CC) $(src) -c -pthread
 
 $(obj): $(hdr)
 

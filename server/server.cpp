@@ -14,39 +14,45 @@ int Server::init_socket() {
         return ERROR;
     }
 
-    std::cout << "=> Client socket created." << std::endl;
-
     int bind_res = bind(__socket_fd, reinterpret_cast<struct sockaddr *>(&__server_address), sizeof(__server_address));
 
     if (bind_res < 0) {
         std::cout << "SERVER ERROR: binding connection. Socket has already been establishing." << std::endl;
-        socket_close();
+        close(__socket_fd);
         return ERROR;
     }
 
     listen(__socket_fd, 1);
-    __client_fd = accept(__socket_fd, NULL, NULL);
-
-    strcpy(__buffer, "SERVER: You can send messages in the format (a + b, a - b, a * b, a / b)\n/exit to close connection");
-    send(__client_fd, __buffer, BUFFER_SIZE, 0);
 
     return SUCCES;
 }
 
-void Server::socket_close() {
+void Server::exit_code() {
     close(__socket_fd);
+    exit(0);
+}
+
+void listen_thread(Server& obj) {
+    char answer[20];
+
+    std::cout << "Enter the /exit, for end server work" << std::endl;
+
+    do {
+        std::cin.getline(answer, 20);
+    } while (strcmp(answer, "/exit") != 0);
+
+    obj.exit_code();
 }
 
 void Server::work() {
-    bool flag = true;
-    while (flag) {
+    while (true) {
+        __client_fd = accept(__socket_fd, NULL, NULL);
+
         recv(__client_fd, __buffer, BUFFER_SIZE, 0);
-        if (strcmp(__buffer, "/exit") == 0) {
-            flag = false;
-            continue;
-        }
         __calculation();
         send(__client_fd, __buffer, BUFFER_SIZE, 0);
+
+        close(__client_fd);
     }
 }
 

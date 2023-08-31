@@ -13,16 +13,15 @@
 
 class Client {
     private:
-        int socket_fd;
-        int client_fd;
-        struct sockaddr_in server_address;
-        char buffer[BUFFER_SIZE];
+        int __socket_fd;
+        int __client_fd;
+        struct sockaddr_in __server_address;
+        char __buffer[BUFFER_SIZE];
 
+        void __make_connection();
     public:
         Client();
         ~Client() = default;
 
-        void socket_close();
-        int init_socket();
         void work();
 };

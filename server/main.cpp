@@ -7,8 +7,11 @@ int main() {
         return ERROR;
     }
 
+    std::thread thread(listen_thread, std::ref(server));
+
     server.work();
 
-    server.socket_close();
+    thread.join();
+    
     return 0;
 }
