@@ -4,6 +4,8 @@ Client::Client() {
     __server_address.sin_port = htons(DEFAULT_PORT);
     __server_address.sin_family = AF_INET;
     inet_pton(AF_INET, SERVER_IP, &__server_address.sin_addr);
+
+    __buffer.resize(BUFFER_SIZE);
 }
 
 void Client::__make_connection() {
@@ -29,17 +31,17 @@ void Client::work() {
     __make_connection();
 
     while (flag) {
-        std::cin.getline(__buffer, BUFFER_SIZE);
+        std::getline(std::cin, __buffer);
 
-        send(__socket_fd, __buffer, BUFFER_SIZE, 0);
-
-        if (strcmp(__buffer, "/exit") == 0) {
+        if (__buffer == "/exit") {
             flag = false;
             close(__socket_fd);
             continue;
         }
-        
-        recv(__socket_fd, __buffer, BUFFER_SIZE, 0);
+
+        send(__socket_fd, const_cast <char *> (__buffer.data()), BUFFER_SIZE, 0);
+        __buffer.resize(BUFFER_SIZE);
+        recv(__socket_fd, const_cast <char *> (__buffer.data()), BUFFER_SIZE, 0);
         std::cout << __buffer << std::endl;
 
     }

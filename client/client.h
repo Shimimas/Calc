@@ -16,7 +16,8 @@ class Client {
         int __socket_fd;
         int __client_fd;
         struct sockaddr_in __server_address;
-        char __buffer[BUFFER_SIZE];
+        //char __buffer[BUFFER_SIZE];
+        std::string __buffer;
 
         void __make_connection();
     public:

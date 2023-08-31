@@ -4,6 +4,8 @@ Server::Server() {
     __server_address.sin_port = htons(DEFAULT_PORT);
     __server_address.sin_family = AF_INET;
     __server_address.sin_addr.s_addr = htons(INADDR_ANY);
+
+    __buffer.resize(BUFFER_SIZE);
 }
 
 int Server::init_socket() {
@@ -23,7 +25,7 @@ int Server::init_socket() {
         close(__socket_fd);
         return ERROR;
     }
-
+    
     listen(__socket_fd, 1);
 
     return SUCCES;
@@ -76,16 +78,16 @@ void Server::__accept_check() {
 void Server::__data_working() {
     for(std::set<int>::iterator it = __clients.begin(); it != __clients.end(); it++) {
         if (FD_ISSET(*it, &__readset)) {
-            int bytes_read = recv(*it, __buffer, BUFFER_SIZE, 0);
+            int bytes_read = recv(*it, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
 
-            if (bytes_read <= 0 || strcmp(__buffer, "/exit") == 0) {
+            if (bytes_read <= 0 || __buffer == "/exit") {
                 close(*it);
                 __delayed_deletion.push(it);
                 continue;
             }
 
             __calculation();
-            send(*it, __buffer, BUFFER_SIZE, 0);
+            send(*it, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
         }
     }
 }
@@ -104,8 +106,7 @@ void Server::work() {
         int mx = std::max(__socket_fd, *(std::max_element(__clients.begin(), __clients.end())));
 
         if (select(mx + 1, &__readset, NULL, NULL, &__timeout) <= 0) {
-            std::cout << "select: ERROR" << std::endl;
-            exit(3);
+            continue;
         }
 
         __accept_check();
@@ -119,39 +120,40 @@ bool Server::__isNumeric(std::string const &str) {
 }
 
 void Server::__calculation() {
-    std::string parsing_string(__buffer);
+    std::string parsing_string(const_cast<char *> (__buffer.data()));
     std::regex regex(" ");
  
     std::vector<std::string> out(
                     std::sregex_token_iterator(parsing_string.begin(), parsing_string.end(), regex, -1),
                     std::sregex_token_iterator()
                     );
+ 
     if (__isNumeric(out[0]) && __isNumeric(out[2])) {
         double a = std::stod(out[0]);
         double b = std::stod(out[2]);
 
         switch (out[1][0]) {
             case '+':
-                strcpy(__buffer, std::to_string(a + b).data());
+                __buffer = std::to_string(a + b);
                 break;
             case '-':
-                strcpy(__buffer, std::to_string(a - b).data());
+                __buffer = std::to_string(a - b);
                 break;
             case '/':
                 if (std::stod(out[2]) == 0) {
-                    strcpy(__buffer, "Error: devide by zero");
+                    __buffer = std::string("Error: devide by zero");
                 } else {
-                    strcpy(__buffer, std::to_string(a / b).data());
+                    __buffer = std::to_string(a / b);
                 }
                 break;
             case '*':
-                strcpy(__buffer, std::to_string(a * b).data());
+                __buffer = std::to_string(a * b);
                 break;
             default:
-                strcpy(__buffer, "Error: Bad operator");
+                __buffer = std::string("Error: Bad operator");
                 break;
         }
     } else {
-        strcpy(__buffer, "Error: bad variables");
+        __buffer = std::string("Error: bad variables");
     }
 };

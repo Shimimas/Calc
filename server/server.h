@@ -27,7 +27,8 @@ class Server {
         int __socket_fd;
         int __client_fd;
         struct sockaddr_in __server_address;
-        char __buffer[BUFFER_SIZE];
+        //char __buffer[BUFFER_SIZE];
+        std::string __buffer;
         std::set<int> __clients;
         std::queue<std::set<int>::iterator> __delayed_deletion;
         timeval __timeout;
