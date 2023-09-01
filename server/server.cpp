@@ -37,13 +37,13 @@ void Server::exit_code() {
 }
 
 void listen_thread(Server& obj) {
-    char answer[20];
+    std::string answer;
 
     std::cout << "Enter the /exit, for end server work" << std::endl;
 
     do {
-        std::cin.getline(answer, 20);
-    } while (strcmp(answer, "/exit") != 0);
+        std::getline(std::cin, answer);
+    } while (answer != "/exit");
 
     obj.exit_code();
 }
