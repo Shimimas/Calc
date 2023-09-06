@@ -116,7 +116,7 @@ void Server::work() {
 
             send(__evlist[i].data.fd, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
         }
-        
+
         __mutex.unlock();
     }
 }
@@ -147,7 +147,7 @@ void Server::__calculation() {
                 break;
             case '/':
                 if (std::stod(out[2]) == 0) {
-                    __buffer = std::string("Error: devide by zero");
+                    __buffer = "Error: devide by zero\0";
                 } else {
                     __buffer = std::to_string(a / b);
                 }
@@ -156,11 +156,11 @@ void Server::__calculation() {
                 __buffer = std::to_string(a * b);
                 break;
             default:
-                __buffer = std::string("Error: Bad operator");
+                __buffer = "Error: Bad operator\0";
                 break;
         }
     } else {
-        __buffer = std::string("Error: bad variables");
+        __buffer = "Error: bad variables\0";
     }
 };
 
