@@ -7,11 +7,17 @@ int main() {
         return ERROR;
     }
 
-    std::thread thread(listen_thread, std::ref(server));
+    if (server.init_epoll() == ERROR) {
+        return ERROR;
+    }
+
+    std::thread thread1(listen_thread, std::ref(server));
+    std::thread thread2(accept_thread, std::ref(server));
 
     server.work();
 
-    thread.join();
+    thread1.join();
+    thread2.join();
     
     return 0;
 }

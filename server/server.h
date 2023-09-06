@@ -10,45 +10,51 @@
 #include <vector>
 #include <csignal>
 #include <thread>
-#include <set>
 #include <fcntl.h>
-#include <algorithm>
-#include <queue>
+#include <sys/epoll.h>
+#include <mutex>
 
 #define ERROR -1
 #define SUCCES 1
 #define DEFAULT_PORT 1601
 #define BUFFER_SIZE 1024
 #define CLIENT_NAME_SIZE 20
+#define EPOLL_START_SIZE 5
+#define MAX_EVENTS 1
 
 class Server {
     private:
         int __delete_client = -1;
         int __socket_fd;
-        int __client_fd;
         struct sockaddr_in __server_address;
-        //char __buffer[BUFFER_SIZE];
         std::string __buffer;
-        std::set<int> __clients;
-        std::queue<std::set<int>::iterator> __delayed_deletion;
-        timeval __timeout;
-        fd_set __readset;
+        int __epfd;
+        struct epoll_event __evlist[MAX_EVENTS];
+        int __client_socket;
+        struct epoll_event __ev;
+        bool __exit_code = true;
+        std::mutex __mutex;
 
         void __calculation();
         bool __isNumeric(std::string const &str);
-        void __select_inizialize();
-        void __accept_check();
-        void __data_working();
-        void __clear_delete_clients();
 
     public:
         Server();
         ~Server() = default;
 
         int init_socket();
+        int init_epoll();
         void create_listen_pthread();
         void work();
         void exit_code();
+
+        int getSocket();
+        int getExitCode();
+        int getEpollFd();
+
+        void mutex_lock();
+        void mutex_unlock();
 };
 
 void listen_thread(Server& obj);
+void accept_thread(Server& obj);

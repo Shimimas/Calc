@@ -16,8 +16,6 @@ int Server::init_socket() {
         return ERROR;
     }
 
-    fcntl(__socket_fd, F_SETFL, O_NONBLOCK);
-
     int bind_res = bind(__socket_fd, reinterpret_cast<struct sockaddr *>(&__server_address), sizeof(__server_address));
 
     if (bind_res < 0) {
@@ -31,7 +29,20 @@ int Server::init_socket() {
     return SUCCES;
 }
 
+int Server::init_epoll() {
+    __epfd = epoll_create(EPOLL_START_SIZE);
+
+    if (__epfd < 0) {
+        std::cout << "SERVER ERROR: epoll_create" << std::endl;
+        close(__socket_fd);
+        return ERROR;
+    }
+
+    return SUCCES;
+}
+
 void Server::exit_code() {
+    __exit_code = false;
     close(__socket_fd);
     exit(0);
 }
@@ -48,70 +59,61 @@ void listen_thread(Server& obj) {
     obj.exit_code();
 }
 
-void Server::__select_inizialize() {
-    FD_ZERO(&__readset);
-    FD_SET(__socket_fd, &__readset);
+void accept_thread(Server& obj) {
+    int client_fd;
+    struct epoll_event ev;
 
-    for(std::set<int>::iterator it = __clients.begin(); it != __clients.end(); it++) {
-        FD_SET(*it, &__readset);
-    }
+    while (obj.getExitCode()) {
+        client_fd = accept(obj.getSocket(), NULL, NULL);
 
-    __timeout.tv_sec = 15;
-    __timeout.tv_usec = 0;
-}
-
-void Server::__accept_check() {
-    if (FD_ISSET(__socket_fd, &__readset)) {
-        int sock = accept(__socket_fd, NULL, NULL);
-
-        if (sock < 0) {
+        if (client_fd < 0) {
             std::cout << "accept: ERROR" << std::endl;
-            exit(3);
+            obj.exit_code();
+            continue;
         }
-        
-        fcntl(sock, F_SETFL, O_NONBLOCK);
-        
-        __clients.insert(sock);
-    }
-}
 
-void Server::__data_working() {
-    for(std::set<int>::iterator it = __clients.begin(); it != __clients.end(); it++) {
-        if (FD_ISSET(*it, &__readset)) {
-            int bytes_read = recv(*it, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
+        ev.events = EPOLLIN;
+        ev.data.fd = client_fd;
 
-            if (bytes_read <= 0 || __buffer == "/exit") {
-                close(*it);
-                __delayed_deletion.push(it);
-                continue;
-            }
+        obj.mutex_lock();
 
-            __calculation();
-            send(*it, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
+        if (epoll_ctl(obj.getEpollFd(), EPOLL_CTL_ADD, client_fd, &ev ) == -1) {
+            std::cout << "epoll_ctl: ERROR" << std::endl;
+            close(client_fd);
+            obj.exit_code();
         }
-    }
-}
 
-void Server::__clear_delete_clients() {
-    while (!__delayed_deletion.empty()) {
-        __clients.erase(*(__delayed_deletion.front()));
-        __delayed_deletion.pop();
+        obj.mutex_unlock();
     }
 }
 
 void Server::work() {
-    while (true) {
-        __select_inizialize();
+    int activeClientsAmount;
 
-        int mx = std::max(__socket_fd, *(std::max_element(__clients.begin(), __clients.end())));
+    while (__exit_code) {
+        activeClientsAmount = epoll_wait(__epfd, __evlist, MAX_EVENTS, -1);
 
-        if (select(mx + 1, &__readset, NULL, NULL, &__timeout) <= 0) {
+        if (activeClientsAmount == 0) {
             continue;
         }
 
-        __accept_check();
-        __data_working();
-        __clear_delete_clients();
+        if (activeClientsAmount == -1) {
+            std::cout << "SERVER ERROR: epoll_wait" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        for (int i = 0; i < activeClientsAmount; i++) {
+            int bytes_read = recv(__evlist[i].data.fd, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
+
+            if (bytes_read <= 0 || __buffer == "/exit") {
+                epoll_ctl (__epfd, EPOLL_CTL_DEL, __evlist[i].data.fd, &__evlist[i]);
+                continue;
+            }
+
+            __calculation();
+
+            send(__evlist[i].data.fd, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
+        }
     }
 }
 
@@ -157,3 +159,23 @@ void Server::__calculation() {
         __buffer = std::string("Error: bad variables");
     }
 };
+
+int Server::getSocket() {
+    return __socket_fd;
+}
+
+int Server::getExitCode() {
+    return __exit_code;
+}
+
+int Server::getEpollFd() {
+    return __epfd;
+}
+
+void Server::mutex_lock() {
+    __mutex.lock();
+}
+
+void Server::mutex_unlock() {
+    __mutex.unlock();
+}
