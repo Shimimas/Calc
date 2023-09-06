@@ -93,6 +93,8 @@ void Server::work() {
     while (__exit_code) {
         activeClientsAmount = epoll_wait(__epfd, __evlist, MAX_EVENTS, -1);
 
+        __mutex.lock();
+
         if (activeClientsAmount == 0) {
             continue;
         }
@@ -114,6 +116,8 @@ void Server::work() {
 
             send(__evlist[i].data.fd, const_cast<char *> (__buffer.data()), BUFFER_SIZE, 0);
         }
+        
+        __mutex.unlock();
     }
 }
 
